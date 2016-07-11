@@ -1,7 +1,7 @@
 # nltk-text-summarizer
 Summarize articles on the net by simply copying the intended article.
 
-This was built in Python 3.4 and please refer to the pre-requistes required for running it successfully. If you are on Linux/iOS you will experience problem in creating system notifications. Will update the code for that soon. 
+This was built in Python 3.4 and please refer to the pre-requistes required for running it successfully. If you are on Linux or some other OS you will experience problem in creating system notifications. Will update the code for that soon. 
 
 Pre-requisites - 
 -------
