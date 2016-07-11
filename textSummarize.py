@@ -150,7 +150,6 @@ class ExtractNewSentences:
                 newFinalSents.append(s)
         try:
             ctypes.windll.user32.MessageBoxW(0, ' '.join(newFinalSents), "Article - ", 0)
-            alert(text=' '.join(newFinalSents), title='Article - ', button='OK')
         except:
             alert(text=' '.join(newFinalSents), title='Article - ', button='OK')
         #print(newFinalSents)
