@@ -25,7 +25,7 @@ ExtractNewSentences().run() #by default the script runs for 2 hours in backgroun
 #To run for specific hour(s) say 1.5 hours
 ExtractNewSentences().run(timer=1.5)
 
-#To summarize say 50% of the text
+#To summarize into 50% of the text
 ExtractNewSentences().run(reducepercent=0.5)
 
 ```
