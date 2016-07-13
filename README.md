@@ -8,6 +8,7 @@ Pre-requisites -
 1. Python 3.4 (although it shoudn't have problem running on other Python versions.)
 2. NLTK for Python 
 3. nltk.corpus
+4. 5. (For Linux users) PyMsgBox library for creating alert box(refer google for installation)
 
 Usage - 
 -------
