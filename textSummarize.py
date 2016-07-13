@@ -148,10 +148,11 @@ class ExtractNewSentences:
         for s in newSents:
             if s!=None:
                 newFinalSents.append(s)
-        try:
-            ctypes.windll.user32.MessageBoxW(0, ' '.join(newFinalSents), "Article - ", 0)
-        except:
-            alert(text=' '.join(newFinalSents), title='Article - ', button='OK')
+        
+            ctypes.windll.user32.MessageBoxW(0, ' '.join(newFinalSents), "Article - ", 0) #linux users comment this out and uncomment alert given below
+                
+       
+            #alert(text=' '.join(newFinalSents), title='Article - ', button='OK')
         #print(newFinalSents)
 
     def run(self,loop='NoValue',timer=2,reducepercent=0.75):
