@@ -16,8 +16,10 @@ class ExtractNewSentences:
 
     #Paper referred - #http://www.aclweb.org/anthology/W09-1608
 
-    nounDict={} #for storing nouns of a paticular sentence. To be used in Rule - 3 of findAffinity and Rule - 1 of findCloseness.
+    nounDict={} #for storing nouns of a paticular sentence. To be used in Rule - 3 of findCohesion.
+    wordsDict={} #for storing lemmatized words of sentence. Used in Rule - 1 of findCloseness.
     closeScoreDict={} #for storing the average of both rules in findCloseness.
+    tagger=tagging(treebank.tagged_sents(),[UnigramTagger,BigramTagger,TrigramTagger],backoff=None)
            
     def removeStopwords(self,sents):
         st=stopwords.words('english')
@@ -46,30 +48,32 @@ class ExtractNewSentences:
 
     def lemmatizationOfText(self,sents):
 
-        tagger=tagging(treebank.tagged_sents(),[UnigramTagger,BigramTagger,TrigramTagger],backoff=None)
+        
         newSents=[]
         index=0
         for sent in sents:
             
             noun=[]
-            taggedSent=tagger.tag(word_tokenize(sent))
+            taggedSent=self.tagger.tag(word_tokenize(sent))
             words=[]
             for (wd,tg) in taggedSent:
                 newTag=self.tagMap(tg)
                 if tg!=None and tg.startswith('N'):
                     noun.append(wd)
-                
+                    
                 wd=WordNetLemmatizer().lemmatize(wd,newTag)
                 words=words+[wd]
             
             self.nounDict.setdefault(index,noun)
+            self.wordsDict.setdefault(index,words) #New dictionary added. Changed Rule - 1 of findCloseness. 
             index=index+1
+
             
             newSent=' '.join(words)
             newSents.append(newSent)
         return newSents
 
-    def synonyms(self,nlist):
+    def synonymsNoun(self,nlist):
         synonymsList=[]
         for noun in nlist:
             define=wordnet.synsets(noun)
@@ -80,9 +84,32 @@ class ExtractNewSentences:
         #synonyms=set(synonyms)
         #print(synonymsList)
         return synonymsList
+
+    def synonymsWords(self,wlist):
+        synonymsList=[]
+        for word in wlist:
+            define=wordnet.synsets(word)
+            t=self.tagger.tag([word])
+            #print(str(t)+' '+str(word))
+            tag=None
+            for (wd,tg) in t:
+                tag=tg
+            for i in define:
+                #print(str(i.pos()).upper())
+                #print(t)
+                if tag!=None and tag.startswith(str(i.pos()).upper()):
+                    #print(str(i.pos()).upper())
+                    #print(tag)
+                    #i.pos() will be for example n,a,v,etc. tag will be NN,NP,VB,etc.
+                    #So change i.pos() to upper and take it as an arguement in startswith to match only when tags are same.  
+                    for j in i.lemmas():
+                        synonymsList=synonymsList+[j.name()]
+        #synonyms=set(synonyms)
+        #print(synonymsList)
+        return synonymsList
        
     
-    def findAffinity(self,sent1,sent2,index1,index2):
+    def findCohesion(self,sent1,sent2,index1,index2):
 
         rulesScore=[0] #for storing 1 if rule is satisfied.
         corpusPossesive=['he','she','their','yours']
@@ -98,12 +125,12 @@ class ExtractNewSentences:
         #Rule 2 - Same words
         for word in words1:
             if word in words2:
-                rulesScore.append(1)
+                rulesScore.append(1) #change this
                 break
 
         
         #Rule 3 - Thesaurus using Wordnet. Will append 1 if atleast 1 noun matches.
-        if set(self.synonyms(self.nounDict[index1])).intersection(set(self.synonyms(self.nounDict[index2])))!=None:
+        if set(self.synonymsNoun(self.nounDict[index1])).intersection(set(self.synonymsNoun(self.nounDict[index2])))!=None:
             rulesScore.append(1)
 
             
@@ -126,10 +153,10 @@ class ExtractNewSentences:
           
                 if i!=j:
 
-                    nouns=set(self.synonyms(self.nounDict[i])).intersection(set(self.synonyms(self.nounDict[j])))
-                    countNouns=float(len(nouns)) #Rule - 1 count number of nouns
+                    clwords=set(self.synonymsWords(self.wordsDict[i])).intersection(set(self.synonymsWords(self.wordsDict[j])))
+                    clwordslen=float(len(clwords))/len(nltk.tokenize.word_tokenize(sents[i])) #Rule - 1 count number of similar words (including nouns - Earlier only nouns considered) #changed this. 
                     distance=float(edit_distance(sents[i],sents[j]))/len(sents[i]) #Rule - 2 Find distance between 2 sentences. Used library nltk.metrics 
-                    totalScore=float(countNouns+distance)/2
+                    totalScore=float(clwordslen+distance)/2
                     tScore.append(totalScore)    
             self.closeScoreDict.setdefault(index,tScore)  #Dictionary of Sentence index and total score of that sentence with other sentences.
             index=index+1
@@ -148,11 +175,10 @@ class ExtractNewSentences:
         for s in newSents:
             if s!=None:
                 newFinalSents.append(s)
-        
-            ctypes.windll.user32.MessageBoxW(0, ' '.join(newFinalSents), "Article - ", 0) #linux users comment this out and uncomment alert given below
-                
-       
-            #alert(text=' '.join(newFinalSents), title='Article - ', button='OK')
+        try:
+            ctypes.windll.user32.MessageBoxW(0, ' '.join(newFinalSents), "Article - ", 0)
+        except:
+            alert(text=' '.join(newFinalSents), title='Article - ', button='OK')
         #print(newFinalSents)
 
     def run(self,loop='NoValue',timer=2,reducepercent=0.75):
@@ -176,20 +202,20 @@ class ExtractNewSentences:
         sents=self.removeStopwords(sents)
         sents=self.lemmatizationOfText(sents)
 
-        affinityScores=[] #to store affinity scores. Taken 2 sentences at a time.
+        cohesionScores=[] #to store cohesion scores. Taken 2 sentences at a time.
         #For example for sentence 2, add 1-2 and 2-3 score and take average. For first and last score = 1 is added additionally. 
 
         i=0
-        affinityScores.append(1+self.findAffinity(sents[i],sents[i+1],i,i+1)) #first sentence score calculated.
+        cohesionScores.append(1+self.findCohesion(sents[i],sents[i+1],i,i+1)) #first sentence score calculated.
         i=i+1
     
         for i in range(1,len(sents)-1):
             
-            sc1=self.findAffinity(sents[i],sents[i-1],i,i-1) #previous relation sentence
-            sc2=self.findAffinity(sents[i],sents[i+1],i,i+1) #next relation sentence 
-            affinityScores.append(sc1+sc2)
+            sc1=self.findCohesion(sents[i],sents[i-1],i,i-1) #previous relation sentence
+            sc2=self.findCohesion(sents[i],sents[i+1],i,i+1) #next relation sentence 
+            cohesionScores.append(sc1+sc2)
 
-        affinityScores.append(1+self.findAffinity(sents[i],sents[i-1],i,i-1)) #last sentence score calculated.
+        cohesionScores.append(1+self.findCohesion(sents[i],sents[i-1],i,i-1)) #last sentence score calculated.
 
 
         self.findCloseness(sents) #call to generate closeScoreDict
@@ -204,7 +230,7 @@ class ExtractNewSentences:
             
         totalScoreFinal=[]
         for i in range(len(sents)):
-            totalScoreFinal.append(float(0.35*affinityScores[i]+0.65*closeListFinal[i]))
+            totalScoreFinal.append(float(0.35*cohesionScores[i]+0.65*closeListFinal[i]))
             
         nSent=int(reducepercent*len(sents))
 
